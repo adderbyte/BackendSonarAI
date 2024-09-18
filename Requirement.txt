@@ -1,14 +1,14 @@
-libmagic  ## conda install
+libmagic 
 openai
 langchain
---quiet langchain-unstructured unstructured-client unstructured "unstructured[pdf]" python-magic
+"unstructured[all-docs]"
 yival
 pypdf
-#langchain-core
 langchain-openai
 langchain-community
 langchain-experimental
 langchain-core
+
 
 
 
