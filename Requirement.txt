@@ -3,6 +3,7 @@ openai
 langchain
 --quiet langchain-unstructured unstructured-client unstructured "unstructured[pdf]" python-magic
 yival
+pypdf
 #langchain-core
 langchain-openai
 langchain-community
