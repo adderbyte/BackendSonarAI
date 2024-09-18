@@ -1,12 +1,14 @@
 libmagic  ## conda install
-pip install openai
-langchain-core
+openai
+langchain
+--quiet langchain-unstructured unstructured-client unstructured "unstructured[pdf]" python-magic
+yival
+#langchain-core
 langchain-openai
 langchain-community
 langchain-experimental
-yival
 langchain-core
---quiet langchain-unstructured unstructured-client unstructured "unstructured[pdf]" python-magic
+
 
 
 
