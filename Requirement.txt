@@ -1,0 +1,18 @@
+
+conda install libmagic
+pip install openai
+pip install langchain-core
+pip install langchain-openai
+pip install langchain-community
+pip install langchain-experimental
+pip install yival
+pip install langchain-core
+pip install --upgrade --quiet langchain-unstructured unstructured-client unstructured "unstructured[pdf]" python-magic
+
+
+
+
+
+
+
+
