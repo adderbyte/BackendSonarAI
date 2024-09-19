@@ -33,7 +33,12 @@ app = FastAPI()
 @app.get("/")
 def root(self):
 
-    
+    ### get env key for unstrcutured data set
+    ### change to os.getenv later
+    undstructured_loader_key = os.environ["UNSTRUCTURED_API_KEY"]
+
+        # Ensure you have your OpenAI API key set up
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
     return JSONResponse(
             content={"message": " Summmarizing Documents..."}, status_code=200
@@ -57,13 +62,7 @@ class Summarizer:
         # self._expertise_level =  None
         # self._msg =  message
         # self._count =  count
-        ### get env key for unstrcutured data set
-        ### change to os.getenv later
-        self.undstructured_loader_key = os.environ["UNSTRUCTURED_API_KEY"]
-
-        # Ensure you have your OpenAI API key set up
-        self.openai.api_key = os.getenv("OPENAI_API_KEY")
-        print("========================here", self.openai.api_key)
+        print("========================here")
 
 
     def is_pdf(self,file_path): 
@@ -90,7 +89,7 @@ class Summarizer:
     
         return article_dataset
 
-    def articleSummarizer(self,article: str, podcast_length:int, expertise_level:str) -> MultimodalOutput:
+    def articleSummarizer(self,article: str, state: ExperimentState, podcast_length:int, expertise_level:str) -> MultimodalOutput:
 
         ### temp_file loator
         # Save the audio file to a temporary location
@@ -99,7 +98,7 @@ class Summarizer:
         ## logging
         logger = TokenLogger()
         logger.reset()
-        openai.api_key = self.openai.api_key
+        
 
         # Create a chat message sequence
         messages = [{
@@ -148,11 +147,10 @@ class Summarizer:
    
     @app.post("/submitform/")
     async def doSummary(self, 
-        
+        datafile:Annotated[UploadFile, File(...)],# UploadFile=File(...),# datafiles: UploadFile = File(...), 
         podcast_length: Annotated[int, Form()],# podcast_length: int=Form(),
         expertise_level: Annotated[str,Form()], 
-        link_name: Annotated[str, Form()], # link_name: str= Form()
-        datafile:Annotated[UploadFile | None, File()] = None,# UploadFile=File(...),# datafiles: UploadFile = File(...), 
+        link_name: Annotated[str, Form()] # link_name: str= Form()
         ):
 
          temp_file_path = None
@@ -192,13 +190,13 @@ class Summarizer:
 
          print( datafile.filename, podcast_length, expertise_level,link_name ,"=============================I am the file ==========================")
 
-         # print("------------the data file is now ready --------------", article[0:20])
+         print("------------the data file is now ready --------------", article[0:20])
          # with open(temp_file_path, "wb") as audio_file:
          #    contents = await audio.read()
          #    audio_file.write(contents)
 
-         answer = self.articleSummarizer(article=article,
-            podcast_length=podcast_length,expertise_level=expertise_level )
+        #  answer = Summarizer.articleSummarizer(article=article, 
+        #     podcast_length=podcast_length,expertise_level=expertise_level )
 
         #  print("=============")
         #  print(answer)

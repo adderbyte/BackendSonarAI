@@ -1,5 +1,16 @@
 import os
 
+
+from langchain import PromptTemplate
+from langchain.chains.summarize import load_summarize_chain
+
+# from langchain.llms import VertexAI
+
+## for loading file
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_unstructured import UnstructuredLoader
+
+
 import openai
 from typing import Annotated
 import time
@@ -85,7 +96,25 @@ class Summarizer:
             loader_pdf = PyPDFLoader(file_uploaded)
             article_dataset = loader_pdf.load() 
         else:
-            loader_pdf = partition(data_file_path) #UnstructuredLoader(data_file_path)
+            loader_pdf = UnstructuredLoader(file_uploaded) #UnstructuredLoader(data_file_path)
+            article_dataset =   "\n".join([str(el) for el in loader_pdf])                             # loader_pdf.load()
+    
+        return article_dataset
+
+    def get_link_response(self,link_name):
+        """
+        Load docuemnts
+        check if pdf else it is unstrcuted tupe ---> use the UnstrcutedLoaderAPI
+
+        LangChain can load from URL but install libMagic first: 
+        https://github.com/langchain-ai/langchain/issues/5342
+        """
+        if self.is_pdf(link_name):
+            # load file
+            loader_pdf = PyPDFLoader(link_name)
+            article_dataset = loader_pdf.load() 
+        else:
+            loader_pdf = UnstructuredLoader(link_name) #UnstructuredLoader(data_file_path)
             article_dataset =   "\n".join([str(el) for el in loader_pdf])                             # loader_pdf.load()
     
         return article_dataset
@@ -97,20 +126,7 @@ class Summarizer:
 
         # temp_file_path = f"temp/{datafile.filename}"
         ## logging
-        logger = TokenLogger()
-        logger.reset()
-        openai.api_key = self.openai.api_key
-
-        # Create a chat message sequence
-        messages = [{
-            "role":
-            "system",
-            "content":
-            ### use f string for formatting f" the string + podcast_length + experience_level " ---> this is more expressive
-            #### or "the  string {}, string , {}".format(podcast_length, experience_level)
-            str(
-                StringWrapper(
-            f"(1) Task: create an exciting and captivating podcast script based on the provided document content.\
+        prompt_template = f"(1) Task: create an exciting and captivating podcast script based on the provided document content.\
                        Tailor the script for students, presenting the information as a compelling story with a narrative.\
                        Output only the words to be spoken aloud. Do not include any stage directions, sound effects, \
                        structural markers, or non-spoken text.\n \
@@ -126,24 +142,10 @@ class Summarizer:
                         Respect the Content: Remain faithful to the original document's intent and message.  \
                         Exclusive Spoken Words: Only include text that is meant to be spoken aloud. Avoid any brackets, parentheses, or notes, including things like `Opening` or `Body`. \
                     ",
-                    name="summarization",
-                    state=state
-                )
-            )
-        }, {
-            "role": "user",
-            "content": article
-        }]
-        # Use the chat-based completion
-        response = openai.ChatCompletion.create(model="gpt-4", messages=messages)
 
-        answer = MultimodalOutput(
-            text_output=response['choices'][0]['message']['content'],
-        )
-        token_usage = response['usage']['total_tokens']
-        logger.log(token_usage)
+        stuff_chain = load_summarize_chain(vertex_llm_text, chain_type="stuff", prompt=prompt)
 
-        return answer
+        return "answer"
 
    
     @app.post("/submitform/")
@@ -152,7 +154,7 @@ class Summarizer:
         podcast_length: Annotated[int, Form()],# podcast_length: int=Form(),
         expertise_level: Annotated[str,Form()], 
         link_name: Annotated[str, Form()], # link_name: str= Form()
-        datafile:Annotated[UploadFile | None, File()] = None,# UploadFile=File(...),# datafiles: UploadFile = File(...), 
+        datafile:Annotated[UploadFile | None, File()] = None,# UploadFile=File(...),# datafiles: UploadFile = File(...),  checks None
         ):
 
          temp_file_path = None
@@ -173,13 +175,23 @@ class Summarizer:
             try: 
                ## check if link responsive
                response = requests.head(link_name, allow_redirects=True) # Use HEAD to avoid downloading the whole page 
+               
+
                if response.status_code == 200:  ## if link is responsive
                      temp_file_path =  link_name
+                     article =  self.get_link_response(temp_file_path)
                else: ## if link is not responsive
                      if datafile is None:  # check if File was not uploaded once link is not responsue
                         return JSONResponse( content={"error": "No file uploaded. and link to file name is not responsive"}, status_code=400 ) # Optional: Check
                      else: ##  get file bame id file was provided
-                        fileUploaded= datafile#f"temp/{datafile.filename}"#datafile.filename
+                        ### this section captures the case where the link anf file uploaded but link not responsive
+                        temp_file_path = f"/tmp/{datafile.filename}" 
+                        with open(temp_file_path, "wb") as file: 
+                            content = await datafile.read() 
+                            file.write(content) 
+
+                        # Now use the saved file path with PyPDFLoader 
+                        article =  self.get_response(temp_file_path,filename=datafile.filename)
             except:
 
                     return JSONResponse( content={"error": "Inputs are invlaid. Input should be uploaded file or a link to a file"}, status_code=400 )
@@ -192,13 +204,13 @@ class Summarizer:
 
          print( datafile.filename, podcast_length, expertise_level,link_name ,"=============================I am the file ==========================")
 
-         # print("------------the data file is now ready --------------", article[0:20])
+         print("------------the data file is now ready --------------", article[0:20])
          # with open(temp_file_path, "wb") as audio_file:
          #    contents = await audio.read()
          #    audio_file.write(contents)
 
-         answer = self.articleSummarizer(article=article,
-            podcast_length=podcast_length,expertise_level=expertise_level )
+         # answer = self.articleSummarizer(article=article,
+         #    podcast_length=podcast_length,expertise_level=expertise_level )
 
         #  print("=============")
         #  print(answer)
